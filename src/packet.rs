@@ -30,14 +30,14 @@ pub const TCP_FLAG_RST: u8 = 0x04;
 /// the one's-complement sum, in host order.
 pub fn internet_checksum(data: &[u8]) -> u16 {
     let mut sum: u32 = 0;
-    let mut chunks = data.chunks_exact(2);
-    for chunk in &mut chunks {
-        let word = ((chunk[0] as u32) << 8) | (chunk[1] as u32);
+    let mut i = 0;
+    while i + 2 <= data.len() {
+        let word = ((data[i] as u32) << 8) | (data[i + 1] as u32);
         sum += word;
+        i += 2;
     }
-    let rem = chunks.remainder();
-    if !rem.is_empty() {
-        sum += (rem[0] as u32) << 8;
+    if i < data.len() {
+        sum += (data[i] as u32) << 8;
     }
     while sum >> 16 != 0 {
         sum = (sum & 0xffff) + (sum >> 16);
@@ -46,7 +46,8 @@ pub fn internet_checksum(data: &[u8]) -> u16 {
 }
 
 /// Verify that a buffer (with an already-computed checksum field filled in)
-/// sums to zero. Used by unit tests and by the receiver for sanity checks.
+/// sums to zero. Used by unit tests.
+#[cfg(test)]
 pub fn internet_checksum_valid(data: &[u8]) -> bool {
     internet_checksum(data) == 0
 }

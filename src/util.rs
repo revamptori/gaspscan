@@ -1,7 +1,6 @@
 //! Small shared helpers: JSON string escaping, ephemeral port selection and
 //! a monotonic deadline type. Kept dependency-free on purpose.
 
-use std::time::{Duration, Instant};
 
 /// Escape a string for inclusion inside a JSON string literal.
 pub fn json_escape(input: &str) -> String {
@@ -20,36 +19,6 @@ pub fn json_escape(input: &str) -> String {
         }
     }
     out
-}
-
-/// A simple wall-clock deadline wrapper.
-#[derive(Clone, Copy)]
-pub struct Deadline {
-    start: Instant,
-    limit: Duration,
-}
-
-impl Deadline {
-    pub fn new(limit: Duration) -> Deadline {
-        Deadline {
-            start: Instant::now(),
-            limit,
-        }
-    }
-
-    /// Milliseconds remaining until the deadline (0 when expired).
-    pub fn remaining_ms(&self) -> u64 {
-        let elapsed = self.start.elapsed();
-        if elapsed >= self.limit {
-            0
-        } else {
-            (self.limit - elapsed).as_millis() as u64
-        }
-    }
-
-    pub fn is_expired(&self) -> bool {
-        self.start.elapsed() >= self.limit
-    }
 }
 
 /// Pick an ephemeral-ish source port for crafting probe packets.
@@ -79,20 +48,10 @@ mod tests {
     }
 
     #[test]
-    fn deadline_expires() {
-        let d = Deadline::new(Duration::from_millis(50));
-        assert!(!d.is_expired());
-        std::thread::sleep(Duration::from_millis(80));
-        assert!(d.is_expired());
-        assert_eq!(d.remaining_ms(), 0);
-    }
-
-    #[test]
     fn ephemeral_ports_are_in_range() {
         for i in 0..100 {
             let p = ephemeral_port(i);
             assert!(p >= 16384);
-            assert!(p <= 65535);
         }
     }
 }
