@@ -1,6 +1,5 @@
-//! Small shared helpers: JSON string escaping, ephemeral port selection and
-//! a monotonic deadline type. Kept dependency-free on purpose.
-
+//! Small shared helpers: JSON string escaping and ephemeral port selection.
+//! Kept dependency-free on purpose.
 
 /// Escape a string for inclusion inside a JSON string literal.
 pub fn json_escape(input: &str) -> String {
