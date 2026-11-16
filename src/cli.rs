@@ -18,7 +18,7 @@ pub fn usage() -> String {
     let mut out = String::new();
     out.push_str(&format!(
         "gaspscan {} — educational port scanner (TCP connect, UDP, raw SYN)\n\n",
-        VERSION
+        VERSION,
     ));
     out.push_str("USAGE:\n");
     out.push_str("    gaspscan <COMMAND> <host> [OPTIONS]\n\n");
@@ -93,7 +93,7 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
                         opts.timeout_ms = value.parse::<u64>().map_err(|_| {
                             format!(
                                 "--timeout must be a number of milliseconds, got '{}'",
-                                value
+                                value,
                             )
                         })?
                     }

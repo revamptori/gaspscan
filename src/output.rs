@@ -103,7 +103,7 @@ fn render_human(
         scan_type,
         target,
         results.len(),
-        duration_ms
+        duration_ms,
     ));
     out.push_str(&format!(
         "{:<8}{:<12}{:<16}{}\n",
@@ -121,7 +121,7 @@ fn render_human(
             r.port,
             r.state.as_str(),
             r.service(),
-            banner_clean
+            banner_clean,
         ));
     }
     let open_count = results
@@ -132,7 +132,7 @@ fn render_human(
         "summary: {} open, {} closed/filtered of {} probed\n",
         open_count,
         results.len() - open_count,
-        results.len()
+        results.len(),
     ));
     out
 }
