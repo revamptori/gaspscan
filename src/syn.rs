@@ -25,10 +25,10 @@ use std::net::IpAddr;
 use std::os::raw::c_int;
 use std::time::{Duration, Instant};
 
+use crate::output::{PortResult, PortState};
 use crate::packet::{
     build_syn_packet, parse_ipv4_tcp, SynParams, TCP_FLAG_ACK, TCP_FLAG_RST, TCP_FLAG_SYN,
 };
-use crate::output::{PortResult, PortState};
 use crate::util::ephemeral_port;
 
 // --- Linux socket constants (x86_64; the tool is Linux-only) ---
@@ -173,7 +173,10 @@ fn open_raw_sender() -> Result<RawFd, String> {
 fn open_raw_receiver(timeout: Duration) -> Result<RawFd, String> {
     let fd = unsafe { socket(AF_INET, SOCK_RAW, IPPROTO_TCP) };
     if fd < 0 {
-        return Err(format!("could not open raw receive socket: {}", last_error_string()));
+        return Err(format!(
+            "could not open raw receive socket: {}",
+            last_error_string()
+        ));
     }
     let tv = TimeVal {
         tv_sec: timeout.as_secs() as i64,
@@ -266,7 +269,11 @@ fn send_probes(
         if rc < 0 {
             failed.push((port, last_error_string()));
         } else {
-            sent.push(SentProbe { port, src_port, seq });
+            sent.push(SentProbe {
+                port,
+                src_port,
+                seq,
+            });
         }
     }
     (sent, failed)
@@ -304,11 +311,7 @@ pub fn spoofed_probe(
 }
 
 /// Run a full half-open SYN scan (raw packets, real source address).
-pub fn syn_scan(
-    target: &str,
-    ports: &[u16],
-    timeout: Duration,
-) -> Result<Vec<PortResult>, String> {
+pub fn syn_scan(target: &str, ports: &[u16], timeout: Duration) -> Result<Vec<PortResult>, String> {
     let dst_ip = parse_ipv4(crate::scan::resolve_target(target)?, "target")?;
     let src_ip = local_source_addr(dst_ip);
     if src_ip == std::net::Ipv4Addr::UNSPECIFIED {
@@ -350,8 +353,8 @@ pub fn syn_scan(
                 continue;
             }
             let expects_ack = parsed.ack == our_seq.wrapping_add(1);
-            let syn_ack = parsed.flags & (TCP_FLAG_SYN | TCP_FLAG_ACK)
-                == (TCP_FLAG_SYN | TCP_FLAG_ACK);
+            let syn_ack =
+                parsed.flags & (TCP_FLAG_SYN | TCP_FLAG_ACK) == (TCP_FLAG_SYN | TCP_FLAG_ACK);
             if syn_ack && expects_ack && !states.contains_key(&port) {
                 states.insert(port, PortState::Open);
             } else if parsed.flags & TCP_FLAG_RST != 0 && !states.contains_key(&port) {

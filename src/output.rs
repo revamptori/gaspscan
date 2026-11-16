@@ -113,7 +113,13 @@ fn render_human(
         let banner = r.banner.clone().unwrap_or_else(|| "-".to_string());
         let banner_clean: String = banner
             .chars()
-            .map(|c| if c.is_ascii_graphic() || c == ' ' { c } else { '.' })
+            .map(|c| {
+                if c.is_ascii_graphic() || c == ' ' {
+                    c
+                } else {
+                    '.'
+                }
+            })
             .take(60)
             .collect();
         out.push_str(&format!(
@@ -137,12 +143,7 @@ fn render_human(
     out
 }
 
-fn render_json(
-    target: &str,
-    scan_type: &str,
-    results: &[PortResult],
-    duration_ms: u128,
-) -> String {
+fn render_json(target: &str, scan_type: &str, results: &[PortResult], duration_ms: u128) -> String {
     let mut out = String::new();
     out.push_str("{\n  \"target\": \"");
     out.push_str(&json_escape(target));
@@ -183,8 +184,16 @@ mod tests {
 
     fn sample_results() -> Vec<PortResult> {
         vec![
-            PortResult { port: 22, state: PortState::Open, banner: Some("SSH-2.0".to_string()) },
-            PortResult { port: 23, state: PortState::Closed, banner: None },
+            PortResult {
+                port: 22,
+                state: PortState::Open,
+                banner: Some("SSH-2.0".to_string()),
+            },
+            PortResult {
+                port: 23,
+                state: PortState::Closed,
+                banner: None,
+            },
         ]
     }
 

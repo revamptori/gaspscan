@@ -257,7 +257,10 @@ mod tests {
         });
         assert_eq!(pkt[0] >> 4, 4);
         assert_eq!((pkt[0] & 0x0f) * 4, IPV4_HEADER_LEN as u8);
-        assert_eq!(u16::from_be_bytes([pkt[2], pkt[3]]) as usize, SYN_PACKET_LEN);
+        assert_eq!(
+            u16::from_be_bytes([pkt[2], pkt[3]]) as usize,
+            SYN_PACKET_LEN
+        );
         assert_eq!(pkt[9], IPPROTO_TCP);
         // IP header checksum covers itself
         assert!(internet_checksum_valid(&pkt[..IPV4_HEADER_LEN]));

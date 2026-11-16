@@ -14,10 +14,7 @@ pub fn json_escape(input: &str) -> String {
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
             c if (c as u32) < 0x20 => {
-                let _ = std::fmt::Write::write_fmt(
-                    &mut out,
-                    format_args!("\\u{:04x}", c as u32),
-                );
+                let _ = std::fmt::Write::write_fmt(&mut out, format_args!("\\u{:04x}", c as u32));
             }
             c => out.push(c),
         }

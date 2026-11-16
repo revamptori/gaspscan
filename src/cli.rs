@@ -29,21 +29,31 @@ pub fn usage() -> String {
     out.push_str("    ports          list well-known ports built into the tool\n");
     out.push_str("    help           show this help\n\n");
     out.push_str("OPTIONS:\n");
-    out.push_str("    --ports <spec>      e.g. \"22,80,443\", \"1-1024\", \"common\" (default), \"all\"\n");
+    out.push_str(
+        "    --ports <spec>      e.g. \"22,80,443\", \"1-1024\", \"common\" (default), \"all\"\n",
+    );
     out.push_str("    --timeout <ms>      per-port timeout in milliseconds (default: 800)\n");
-    out.push_str("    --threads <n>       concurrent probes for TCP scan (default: 100, max 512)\n");
+    out.push_str(
+        "    --threads <n>       concurrent probes for TCP scan (default: 100, max 512)\n",
+    );
     out.push_str("    --banner            read up to 64 bytes from open TCP services\n");
     out.push_str("    --json              emit JSON instead of a table\n");
     out.push_str("    --show-closed       include closed ports in the output\n");
     out.push_str("    --source-ip <ip>    (syn only) forge this source address on every probe;\n");
-    out.push_str("                        send-only mode: replies go to the forged address, not to you\n");
-    out.push_str("    --i-am-authorized   (required with --source-ip) confirm you own this network\n");
+    out.push_str(
+        "                        send-only mode: replies go to the forged address, not to you\n",
+    );
+    out.push_str(
+        "    --i-am-authorized   (required with --source-ip) confirm you own this network\n",
+    );
     out.push_str("                        or have written permission to test it\n\n");
     out.push_str("EXAMPLES:\n");
     out.push_str("    gaspscan scan 127.0.0.1 --ports common\n");
     out.push_str("    gaspscan scan target.example.com --ports 22,80,443 --banner\n");
     out.push_str("    sudo gaspscan syn 127.0.0.1 --ports 1-1024\n");
-    out.push_str("    sudo gaspscan syn lab-vm --ports 22,80 --source-ip 198.51.100.7 --i-am-authorized\n\n");
+    out.push_str(
+        "    sudo gaspscan syn lab-vm --ports 22,80 --source-ip 198.51.100.7 --i-am-authorized\n\n",
+    );
     out.push_str(LEGAL_NOTICE);
     out.push('\n');
     out
@@ -103,11 +113,9 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
                             .map_err(|_| format!("--threads must be a number, got '{}'", value))?
                     }
                     "--source-ip" => {
-                        opts.source_ip = Some(
-                            value.parse::<IpAddr>().map_err(|_| {
-                                format!("--source-ip is not a valid IP address: '{}'", value)
-                            })?,
-                        )
+                        opts.source_ip = Some(value.parse::<IpAddr>().map_err(|_| {
+                            format!("--source-ip is not a valid IP address: '{}'", value)
+                        })?)
                     }
                     _ => unreachable!(),
                 }
@@ -128,9 +136,9 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
                 if let Some(v) = arg.strip_prefix("--ports=") {
                     opts.ports_spec = v.to_string();
                 } else if let Some(v) = arg.strip_prefix("--timeout=") {
-                    opts.timeout_ms = v.parse::<u64>().map_err(|_| {
-                        "--timeout must be a number of milliseconds".to_string()
-                    })?;
+                    opts.timeout_ms = v
+                        .parse::<u64>()
+                        .map_err(|_| "--timeout must be a number of milliseconds".to_string())?;
                 } else if let Some(v) = arg.strip_prefix("--threads=") {
                     opts.threads = v
                         .parse::<usize>()
