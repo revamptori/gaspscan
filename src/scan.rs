@@ -11,6 +11,7 @@ use std::time::Duration;
 use crate::output::{PortResult, PortState};
 
 /// Options shared by the scanning modes.
+#[derive(Clone, Copy)]
 pub struct ScanOptions {
     pub timeout: Duration,
     pub threads: usize,
@@ -209,9 +210,10 @@ pub fn udp_scan(
     opts: &ScanOptions,
 ) -> Result<Vec<PortResult>, String> {
     let ip = resolve_target(target)?;
+    let opts = *opts;
     // UDP replies (and ICMP errors) are per-socket; keep it serial to avoid
     // flooding and to keep the semantics predictable on noisy networks.
-    let results = run_work_queue(ports, 1, |port| probe_udp_port(ip, port, opts));
+    let results = run_work_queue(ports, 1, move |port| probe_udp_port(ip, port, &opts));
     Ok(results)
 }
 
