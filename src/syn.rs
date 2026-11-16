@@ -47,7 +47,7 @@ extern "C" {
         level: c_int,
         optname: c_int,
         optval: *const c_void,
-        optlen: c_uint_compat,
+        optlen: Socklen,
     ) -> c_int;
     fn sendto(
         fd: c_int,
@@ -55,16 +55,16 @@ extern "C" {
         len: usize,
         flags: c_int,
         dest_addr: *const c_void,
-        addrlen: c_uint_compat,
+        addrlen: Socklen,
     ) -> isize;
     fn recv(fd: c_int, buf: *mut u8, len: usize, flags: c_int) -> isize;
     fn close(fd: c_int) -> c_int;
     fn __errno_location() -> *mut c_int;
 }
 
-/// `socklen_t` / `c_uint` are both 32-bit on Linux x86_64; spelled out to
-/// keep the FFI signatures explicit.
-type c_uint_compat = u32;
+/// `socklen_t` / `c_uint` are both 32-bit on Linux x86_64; spelled out
+/// to keep the FFI signatures explicit.
+type Socklen = u32;
 
 #[repr(C)]
 struct SockaddrIn {
@@ -157,7 +157,7 @@ fn open_raw_sender() -> Result<RawFd, String> {
             SOL_IP,
             IP_HDRINCL,
             &one as *const c_int as *const c_void,
-            std::mem::size_of::<c_int>() as c_uint_compat,
+            std::mem::size_of::<c_int>() as Socklen,
         )
     };
     if rc != 0 {
@@ -188,7 +188,7 @@ fn open_raw_receiver(timeout: Duration) -> Result<RawFd, String> {
             SOL_SOCKET,
             SO_RCVTIMEO,
             &tv as *const TimeVal as *const c_void,
-            std::mem::size_of::<TimeVal>() as c_uint_compat,
+            std::mem::size_of::<TimeVal>() as Socklen,
         )
     };
     if rc != 0 {
@@ -263,7 +263,7 @@ fn send_probes(
                 packet.len(),
                 0,
                 &dest as *const SockaddrIn as *const c_void,
-                std::mem::size_of::<SockaddrIn>() as c_uint_compat,
+                std::mem::size_of::<SockaddrIn>() as Socklen,
             )
         };
         if rc < 0 {

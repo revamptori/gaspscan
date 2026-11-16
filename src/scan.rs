@@ -156,7 +156,7 @@ fn read_banner(stream: &TcpStream, timeout: Duration) -> Option<String> {
 
 fn run_work_queue<F>(ports: &[u16], threads: usize, worker: F) -> Vec<PortResult>
 where
-    F: Fn(u16) -> PortResult + Send + Sync,
+    F: Fn(u16) -> PortResult + Send + Sync + 'static,
 {
     let ports = Arc::new(ports.to_vec());
     let next = Arc::new(AtomicUsize::new(0));
