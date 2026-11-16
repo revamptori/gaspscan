@@ -33,8 +33,33 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ matrix.toolchain }}-${{ hashFiles('Cargo.toml') }}
 
+      # Emit the fmt diff as annotations so it is readable via the API.
       - name: Formatting
-        run: cargo fmt --all -- --check
+        shell: bash
+        run: |
+          if cargo fmt --all -- --check > fmt.txt 2>&1; then
+            echo 'formatting OK'
+            exit 0
+          fi
+          python3 - <<'PYEOF'
+          import re
+          esc = lambda s: s.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          cur_file, cur_line, buf = None, 1, []
+          def flush():
+              global buf, cur_file, cur_line
+              if cur_file and buf:
+                  print(f"::error file={cur_file},line={cur_line},title=fmt::{esc(''.join(buf)[:2000])}")
+              buf = []
+          for raw in open("fmt.txt"):
+              m = re.match(r"Diff in (.+):(\d+):", raw)
+              if m:
+                  flush()
+                  cur_file, cur_line = m.group(1), int(m.group(2))
+              else:
+                  buf.append(raw)
+          flush()
+          PYEOF
+          exit 1
 
       # Emit clippy diagnostics as workflow commands so failures show up as
       # annotations instead of being lost with the job logs.
