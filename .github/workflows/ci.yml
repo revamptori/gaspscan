@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [stable, beta]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (${{ matrix.toolchain }})
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ matrix.toolchain }}-${{ hashFiles('Cargo.toml') }}
+
+      # Emit the fmt diff as annotations so it is readable via the API.
+      - name: Formatting
+        shell: bash
+        run: |
+          if cargo fmt --all -- --check > fmt.txt 2>&1; then
+            echo 'formatting OK'
+            exit 0
+          fi
+          python3 - <<'PYEOF'
+          import re
+          esc = lambda s: s.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          cur_file, cur_line, buf = None, 1, []
+          def flush():
+              global buf, cur_file, cur_line
+              if cur_file and buf:
+                  print(f"::error file={cur_file},line={cur_line},title=fmt::{esc(''.join(buf)[:2000])}")
+              buf = []
+          for raw in open("fmt.txt"):
+              m = re.match(r"Diff in (.+):(\d+):", raw)
+              if m:
+                  flush()
+                  cur_file, cur_line = m.group(1), int(m.group(2))
+              else:
+                  buf.append(raw)
+          flush()
+          PYEOF
+          exit 1
+
+      # Emit clippy diagnostics as workflow commands so failures show up as
+      # annotations instead of being lost with the job logs.
+      - name: Clippy
+        shell: bash
+        run: |
+          set +e
+          cargo clippy --all-targets --message-format=json -- -D warnings > clippy.jsonl 2>&1
+          rc=$?
+          cat clippy.jsonl
+          python3 - <<'PYEOF'
+          import json
+          errs = 0
+          for line in open("clippy.jsonl"):
+              try:
+                  msg = json.loads(line)
+              except Exception:
+                  continue
+              if msg.get("reason") != "compiler-message":
+                  continue
+              m = msg.get("message", {})
+              if m.get("level") != "error":
+                  continue
+              errs += 1
+              def esc(s):
+                  return s.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              text = esc(m.get("message", ""))
+              code = (m.get("code") or {}).get("code") or "clippy"
+              pri = [s for s in m.get("spans", []) if s.get("is_primary")]
+              span = pri[0] if pri else next(iter(m.get("spans", [])), None)
+              if span:
+                  f = span.get("file_name", "?")
+                  ln = span.get("line_start", 1)
+                  print(f"::error file={f},line={ln},title={code}::{text}")
+              else:
+                  print(f"::error title={code}::{text}")
+          print(f"clippy error diagnostics: {errs}")
+          PYEOF
+          exit $rc
+
+      - name: Build (debug)
+        run: cargo build
+
+      - name: Build (release)
+        run: cargo build --release
+
+      - name: Unit tests
+        run: cargo test
+
+      - name: Smoke test against 127.0.0.1
+        run: |
+          python3 -m http.server 18099 --bind 127.0.0.1 &
+          SERVER_PID=$!
+          sleep 1
+          ./target/release/gaspscan scan 127.0.0.1 --ports 18099 --json
+          ./target/release/gaspscan scan 127.0.0.1 --ports 1-1024 --threads 64
+          kill $SERVER_PID

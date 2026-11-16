@@ -1,0 +1,19 @@
+[package]
+name = "gaspscan"
+version = "0.1.0"
+description = "Educational TCP/UDP/SYN port scanner with raw-packet source-address crafting (lab use only)"
+authors = ["gaspscan contributors"]
+license = "MIT"
+edition = "2018"
+readme = "README.md"
+keywords = ["portscan", "education", "networking", "security"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "gaspscan"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
