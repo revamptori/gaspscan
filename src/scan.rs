@@ -197,7 +197,10 @@ pub fn tcp_connect_scan(
     opts: &ScanOptions,
 ) -> Result<Vec<PortResult>, String> {
     let ip = resolve_target(target)?;
-    let results = run_work_queue(ports, opts.threads, |port| probe_tcp_port(ip, port, opts));
+    let opts = *opts;
+    let results = run_work_queue(ports, opts.threads, move |port| {
+        probe_tcp_port(ip, port, &opts)
+    });
     Ok(results)
 }
 
