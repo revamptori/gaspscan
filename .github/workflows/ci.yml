@@ -11,16 +11,12 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix:
         toolchain: [stable, beta]
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
       - name: Install Rust (${{ matrix.toolchain }})
         uses: dtolnay/rust-toolchain@master
@@ -37,28 +33,47 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ matrix.toolchain }}-${{ hashFiles('Cargo.toml') }}
 
-      # On pushes: strict check. On PRs: run rustfmt and push the canonical
-      # formatting back to the PR branch if it drifted (the runner's tree is
-      # fixed for the remaining steps either way). Requires contents: write.
       - name: Formatting
-        if: github.event_name == 'push'
         run: cargo fmt --all -- --check
 
-      - name: Formatting (auto-fix)
-        if: github.event_name == 'pull_request'
-        run: |
-          cargo fmt --all
-          if git diff --quiet; then
-            echo 'formatting OK'
-          else
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git commit -am 'style: cargo fmt'
-            git push origin 'HEAD:${{ github.event.pull_request.head.ref }}'
-          fi
-
+      # Emit clippy diagnostics as workflow commands so failures show up as
+      # annotations instead of being lost with the job logs.
       - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
+        shell: bash
+        run: |
+          set +e
+          cargo clippy --all-targets --message-format=json -- -D warnings > clippy.jsonl 2>&1
+          rc=$?
+          cat clippy.jsonl
+          python3 - <<'PYEOF'
+          import json
+          errs = 0
+          for line in open("clippy.jsonl"):
+              try:
+                  msg = json.loads(line)
+              except Exception:
+                  continue
+              if msg.get("reason") != "compiler-message":
+                  continue
+              m = msg.get("message", {})
+              if m.get("level") != "error":
+                  continue
+              errs += 1
+              def esc(s):
+                  return s.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              text = esc(m.get("message", ""))
+              code = (m.get("code") or {}).get("code") or "clippy"
+              pri = [s for s in m.get("spans", []) if s.get("is_primary")]
+              span = pri[0] if pri else next(iter(m.get("spans", [])), None)
+              if span:
+                  f = span.get("file_name", "?")
+                  ln = span.get("line_start", 1)
+                  print(f"::error file={f},line={ln},title={code}::{text}")
+              else:
+                  print(f"::error title={code}::{text}")
+          print(f"clippy error diagnostics: {errs}")
+          PYEOF
+          exit $rc
 
       - name: Build (debug)
         run: cargo build
